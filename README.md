@@ -17,7 +17,6 @@ A browser-based tool for LILA Games' Level Design team to explore player behavio
 
 ### Requirements
 - Python 3.x
-- Node.js (optional, for local serving)
 
 ### Install dependencies
 ```
