@@ -124,11 +124,3 @@ map size.
   Lockdown's 3x higher storm death rate suggests its pacing creates more 
   tension, which could inform a AmbroseValley redesign
 ```
-
----
-
-Save it, then push:
-```
-git add INSIGHTS.md
-git commit -m "Add insights doc"
-git push
