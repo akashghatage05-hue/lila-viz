@@ -84,13 +84,3 @@ The Y flip was the key gotcha — without it all points appear mirrored vertical
 - Move to WebGL (deck.gl) for handling larger datasets
 - Build a proper backend with DuckDB for live querying
 ```
-
----
-
-4. Press `Ctrl+S` to save
-
-Then in PowerShell:
-```
-git add ARCHITECTURE.md
-git commit -m "Fix architecture doc content"
-git push
