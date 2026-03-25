@@ -1,0 +1,5 @@
+player_data/
+public/data.json
+public/matches.json
+__pycache__/
+*.pyc

@@ -1,0 +1,1214 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>LILA BLACK - Match Viz</title>
+    <style>
+      :root {
+        --bg: #0d1117;
+        --panel: #161b22;
+        --text: #ffffff;
+        --muted: rgba(255, 255, 255, 0.7);
+        --muted2: rgba(255, 255, 255, 0.5);
+        --accent: #4A9EFF;
+        --border: rgba(255, 255, 255, 0.10);
+        --shadow: rgba(0, 0, 0, 0.35);
+      }
+      html, body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        background: var(--bg);
+        color: var(--text);
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+        overflow: hidden;
+      }
+      #app {
+        height: 100vh;
+        width: 100vw;
+        display: flex;
+        background: var(--bg);
+      }
+      #sidebar {
+        width: 280px;
+        background: var(--panel);
+        border-right: 1px solid var(--border);
+        box-shadow: 2px 0 10px var(--shadow);
+        padding: 16px 14px;
+        box-sizing: border-box;
+        position: fixed;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        overflow: auto;
+      }
+      #sidebar h1 {
+        margin: 0 0 14px 0;
+        font-size: 18px;
+        letter-spacing: 0.4px;
+      }
+      .section {
+        margin-top: 14px;
+        padding-top: 12px;
+        border-top: 1px solid var(--border);
+      }
+      .label {
+        font-size: 12px;
+        color: var(--muted);
+        margin-bottom: 6px;
+        display: block;
+      }
+      select, button, input[type="range"] {
+        width: 100%;
+        box-sizing: border-box;
+      }
+      select {
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid var(--border);
+        color: var(--text);
+        border-radius: 8px;
+        padding: 10px 10px;
+        outline: none;
+        font-size: 13px;
+      }
+      select:focus {
+        border-color: rgba(74, 158, 255, 0.7);
+      }
+      .row {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        margin-top: 8px;
+      }
+      .row input[type="checkbox"] {
+        transform: translateY(1px);
+      }
+      .check {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        color: var(--muted);
+        margin: 8px 0;
+      }
+      .btn-toggle {
+        width: 100%;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid var(--border);
+        color: var(--text);
+        border-radius: 10px;
+        padding: 10px 12px;
+        font-weight: 600;
+        letter-spacing: 0.2px;
+        cursor: pointer;
+      }
+      .btn-toggle:hover {
+        background: rgba(255, 255, 255, 0.08);
+      }
+      .pill {
+        display: inline-block;
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid var(--border);
+        color: var(--muted);
+        font-size: 12px;
+        margin-top: 10px;
+      }
+      #eventCount {
+        font-size: 13px;
+        color: var(--muted);
+        margin-top: 10px;
+        line-height: 1.3;
+      }
+      #hint {
+        font-size: 12px;
+        color: var(--muted2);
+        margin-top: 10px;
+        line-height: 1.35;
+      }
+
+      #canvasWrap {
+        position: fixed;
+        left: 280px;
+        top: 0;
+        right: 0;
+        bottom: 0;
+      }
+      #mapCanvas {
+        width: 100%;
+        height: 100%;
+        display: block;
+        background: #000;
+      }
+
+      #loadingOverlay {
+        position: fixed;
+        left: 0;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(13, 17, 23, 0.72);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10;
+        pointer-events: none;
+      }
+      .spinner {
+        width: 46px;
+        height: 46px;
+        border-radius: 50%;
+        border: 5px solid rgba(255, 255, 255, 0.16);
+        border-top-color: rgba(74, 158, 255, 0.95);
+        animation: spin 0.9s linear infinite;
+      }
+      @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+      }
+      #loadingText {
+        margin-top: 14px;
+        text-align: center;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      #timelineBar {
+        position: fixed;
+        left: 280px;
+        right: 0;
+        bottom: 0;
+        padding: 12px 14px 14px;
+        box-sizing: border-box;
+        background: linear-gradient(to top, rgba(13, 17, 23, 0.85), rgba(13, 17, 23, 0.25));
+        border-top: 1px solid var(--border);
+        z-index: 5;
+        display: none;
+      }
+      #timelineRow {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        width: 100%;
+      }
+      #playBtn {
+        width: 74px;
+      }
+      .speedGroup {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+      .speedBtn {
+        width: 58px;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid var(--border);
+        color: var(--text);
+        border-radius: 10px;
+        padding: 10px 0;
+        cursor: pointer;
+        font-weight: 700;
+      }
+      .speedBtn.active {
+        border-color: rgba(74, 158, 255, 0.8);
+        background: rgba(74, 158, 255, 0.14);
+      }
+      #timeSlider {
+        flex: 1;
+        margin: 0 6px;
+      }
+      #timeText {
+        width: 220px;
+        text-align: right;
+        color: var(--muted);
+        font-size: 13px;
+        white-space: nowrap;
+      }
+      #legend {
+        margin-top: 10px;
+        font-size: 12px;
+        color: var(--muted2);
+        line-height: 1.35;
+      }
+      .kbd {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        border: 1px solid var(--border);
+        background: rgba(255,255,255,0.04);
+        padding: 2px 6px;
+        border-radius: 8px;
+        color: var(--muted);
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <aside id="sidebar">
+        <h1>LILA BLACK</h1>
+
+        <div class="section">
+          <label class="label" for="mapSelect">Map</label>
+          <select id="mapSelect">
+            <option value="AmbroseValley">AmbroseValley</option>
+            <option value="GrandRift">GrandRift</option>
+            <option value="Lockdown">Lockdown</option>
+          </select>
+        </div>
+
+        <div class="section">
+          <label class="label" for="dateSelect">Date</label>
+          <select id="dateSelect">
+            <option value="All">All</option>
+            <option value="February_10">February_10</option>
+            <option value="February_11">February_11</option>
+            <option value="February_12">February_12</option>
+            <option value="February_13">February_13</option>
+            <option value="February_14">February_14</option>
+          </select>
+        </div>
+
+        <div class="section">
+          <label class="label" for="matchSelect">Match</label>
+          <select id="matchSelect">
+            <option value="__all__">All matches</option>
+          </select>
+          <div id="matchMeta" class="pill" style="display:none;"></div>
+        </div>
+
+        <div class="section">
+          <div class="label">Show</div>
+          <label class="check"><input type="checkbox" id="showHumans" checked /> Humans</label>
+          <label class="check"><input type="checkbox" id="showBots" checked /> Bots</label>
+        </div>
+
+        <div class="section">
+          <div class="label">Heatmap</div>
+          <button class="btn-toggle" id="heatmapToggle" type="button">Off</button>
+        </div>
+
+        <div class="section">
+          <div id="eventCount">Showing 0 events</div>
+          <div id="hint">
+            When a specific match is selected, use the timeline playback to scrub events by timestamp.
+          </div>
+          <div id="legend">
+            Markers: <span style="color:#4A9EFF;">●</span> humans, <span style="color:#888;">●</span> bots, <span style="color:#ff3b3b;">✕</span> kills, <span style="color:#ff9b2f;">○</span> deaths, <span style="color:#b56cff;">⚡</span> storm, <span style="color:#ffd54a;">★</span> loot.
+          </div>
+        </div>
+      </aside>
+
+      <div id="canvasWrap">
+        <canvas id="mapCanvas"></canvas>
+      </div>
+
+      <div id="timelineBar">
+        <div id="timelineRow">
+          <button id="playBtn" class="speedBtn" type="button">Play</button>
+          <div class="speedGroup">
+            <button class="speedBtn" id="speed1" type="button">1x</button>
+            <button class="speedBtn" id="speed5" type="button">5x</button>
+            <button class="speedBtn" id="speed20" type="button">20x</button>
+          </div>
+          <input id="timeSlider" type="range" min="0" max="1" step="1" value="0" />
+          <div id="timeText">Current: 0</div>
+        </div>
+      </div>
+
+      <div id="loadingOverlay" aria-live="polite">
+        <div>
+          <div class="spinner"></div>
+          <div id="loadingText">Loading match data...</div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      (() => {
+        "use strict";
+
+        const SIDEBAR_WIDTH = 280;
+        const MINIMAP_SIZE = 1024;
+
+        // World-to-minimap conversion (given formulas).
+        const MAP_META = {
+          AmbroseValley: { scale: 900, originX: -370, originZ: -473, bgSrc: "minimaps/AmbroseValley_Minimap.png" },
+          GrandRift: { scale: 581, originX: -290, originZ: -290, bgSrc: "minimaps/GrandRift_Minimap.png" },
+          Lockdown: { scale: 1000, originX: -500, originZ: -500, bgSrc: "minimaps/Lockdown_Minimap.jpg" }
+        };
+
+        const EVENTS = [
+          // Keep order aligned to requirement.
+          { key: "Off", label: "Off" },
+          { key: "KillHeat", label: "Kill Heatmap" },
+          { key: "DeathHeat", label: "Death Heatmap" },
+          { key: "TrafficHeat", label: "Traffic Heatmap" },
+        ];
+
+        // DOM
+        const mapSelect = document.getElementById("mapSelect");
+        const dateSelect = document.getElementById("dateSelect");
+        const matchSelect = document.getElementById("matchSelect");
+        const matchMeta = document.getElementById("matchMeta");
+
+        const showHumans = document.getElementById("showHumans");
+        const showBots = document.getElementById("showBots");
+
+        const heatmapToggle = document.getElementById("heatmapToggle");
+        const eventCountEl = document.getElementById("eventCount");
+
+        const canvas = document.getElementById("mapCanvas");
+        const ctx = canvas.getContext("2d", { alpha: false, desynchronized: true });
+
+        // Timeline
+        const timelineBar = document.getElementById("timelineBar");
+        const playBtn = document.getElementById("playBtn");
+        const speed1Btn = document.getElementById("speed1");
+        const speed5Btn = document.getElementById("speed5");
+        const speed20Btn = document.getElementById("speed20");
+        const timeSlider = document.getElementById("timeSlider");
+        const timeText = document.getElementById("timeText");
+
+        // Loading
+        const loadingOverlay = document.getElementById("loadingOverlay");
+        const loadingText = document.getElementById("loadingText");
+
+        function formatNum(n) {
+          if (!Number.isFinite(n)) return String(n);
+          return Math.round(n).toLocaleString();
+        }
+
+        function classifyEvent(ev) {
+          // Exact `event` strings in your dataset:
+          // Position, BotPosition, Loot, Kill, BotKill, KilledByStorm, Killed, BotKilled
+          const s = (ev ?? "").toString().trim().toLowerCase();
+          switch (s) {
+            case "position": return "humanPos";
+            case "botposition": return "botPos";
+            case "loot": return "loot";
+            case "kill": return "kill";
+            case "botkill": return "botKill";
+            case "killedbystorm": return "storm";
+            case "killed": return "death";
+            case "botkilled": return "botDeath";
+            default: return null;
+          }
+        }
+
+        function toMinimapPixel(mapId, x, z) {
+          const meta = MAP_META[mapId];
+          if (!meta) return null;
+          const u = (x - meta.originX) / meta.scale;
+          const v = (z - meta.originZ) / meta.scale;
+          const pixelX = u * MINIMAP_SIZE;
+          const pixelY = (1 - v) * MINIMAP_SIZE;
+          return { px: pixelX, py: pixelY };
+        }
+
+        function upperBoundByTs(arr, ts) {
+          // First index i where arr[i].ts > ts. (So slice(0, i) are <= ts)
+          let lo = 0;
+          let hi = arr.length;
+          while (lo < hi) {
+            const mid = (lo + hi) >> 1;
+            if (arr[mid].ts <= ts) lo = mid + 1;
+            else hi = mid;
+          }
+          return lo;
+        }
+
+        function formatMatchLabel(match) {
+          const idStr = String(match.match_id ?? "");
+          const trunc = idStr.length > 10 ? idStr.slice(0, 10) + "…" : idStr;
+          return `${trunc} • ${match.player_count} players`;
+        }
+
+        function setSpeedActive(mult) {
+          speed1Btn.classList.toggle("active", mult === 1);
+          speed5Btn.classList.toggle("active", mult === 5);
+          speed20Btn.classList.toggle("active", mult === 20);
+        }
+
+        // State / data caches
+        let matches = [];
+        let eventsByMatch = new Map(); // matchId -> simplified events sorted by ts asc
+        let matchInfoById = new Map(); // matchId -> match object
+
+        let matchesByMapDate = new Map(); // mapId|dateValue -> matchIds[]
+        let cachedAllMatchesEvents = new Map(); // key -> array of simplified events (unsorted)
+
+        // Single global minimap image.
+        const mapImage = new Image();
+        mapImage.crossOrigin = "anonymous";
+        mapImage.decoding = "async";
+        mapImage.loading = "eager";
+        mapImage.onload = () => {
+          console.log("mapImage onload:", mapImage.src, "complete:", mapImage.complete, "naturalWidth:", mapImage.naturalWidth);
+          render();
+        };
+        mapImage.onerror = () => {
+          console.warn("mapImage failed:", mapImage.src, "complete:", mapImage.complete, "naturalWidth:", mapImage.naturalWidth);
+          needsFullRender = true;
+        };
+
+        // Render scaling
+        let viewport = { widthCss: 1, heightCss: 1, scaleX: 1, scaleY: 1, scaleMinimapToScreen: 1 };
+
+        // Heatmap
+        const heatmapOff = document.createElement("canvas");
+        heatmapOff.width = MINIMAP_SIZE;
+        heatmapOff.height = MINIMAP_SIZE;
+        const heatmapOffCtx = heatmapOff.getContext("2d", { alpha: true });
+        let heatmapCacheKey = null;
+        let heatmapEvents = []; // relevant events sorted by ts
+        let heatmapDrawnCount = 0;
+        let heatmapLastViewportScale = null;
+        let heatmapLastTs = null;
+        let heatmapModeIndex = 0; // 0..3
+
+        // Playback
+        let playState = {
+          matchId: null,
+          startTs: 0,
+          endTs: 0,
+          currentTs: 0,
+          isPlaying: false,
+          speed: 1,
+          playStartReal: 0,
+          playStartTs: 0,
+        };
+
+        let needsFullRender = true;
+        let lastFrameAt = 0;
+
+        function showLoading(text) {
+          loadingText.textContent = text || "Loading match data...";
+          loadingOverlay.style.display = "flex";
+        }
+
+        function hideLoading() {
+          loadingOverlay.style.display = "none";
+        }
+
+        function setCurrentMapImage(mapId) {
+          const meta = MAP_META[mapId];
+          if (!meta) return;
+          mapImage.src = meta.bgSrc;
+          console.log("mapImage src set:", mapImage.src, "complete:", mapImage.complete, "naturalWidth:", mapImage.naturalWidth);
+          needsFullRender = true;
+        }
+
+        function resizeCanvasAndViewport() {
+          const cssW = Math.max(1, window.innerWidth - SIDEBAR_WIDTH);
+          const cssH = Math.max(1, window.innerHeight);
+
+          canvas.width = cssW;
+          canvas.height = cssH;
+          canvas.style.width = cssW + "px";
+          canvas.style.height = cssH + "px";
+
+          ctx.setTransform(1, 0, 0, 1, 0, 0);
+          ctx.imageSmoothingEnabled = true;
+
+          const scaleX = cssW / MINIMAP_SIZE;
+          const scaleY = cssH / MINIMAP_SIZE;
+          const scaleMinimapToScreen = (scaleX + scaleY) / 2;
+          viewport = { widthCss: cssW, heightCss: cssH, scaleX, scaleY, scaleMinimapToScreen };
+
+          // Heatmap radius depends on viewport scale. Rebuild lazily.
+          needsFullRender = true;
+          heatmapLastViewportScale = null;
+        }
+
+        function classifyForHeatmap(kind, showHum, showBot) {
+          if (heatmapModeIndex === 0) return false; // Off
+          const mode = EVENTS[heatmapModeIndex].key;
+
+          if (mode === "KillHeat") {
+            return kind === "kill" || kind === "botKill";
+          }
+          if (mode === "DeathHeat") {
+            return kind === "death" || kind === "storm" || kind === "botDeath";
+          }
+          if (mode === "TrafficHeat") {
+            if (kind === "humanPos") return showHum;
+            if (kind === "botPos") return showBot;
+            return false;
+          }
+          return false;
+        }
+
+        function rebuildHeatmapIfNeeded({ baseEvents, matchIdScope, timeLimited }) {
+          const mapId = mapSelect.value;
+          const dateValue = dateSelect.value;
+          const modeKey = EVENTS[heatmapModeIndex].key;
+          const trafficSig = `${showHumans.checked ? 1 : 0}${showBots.checked ? 1 : 0}`;
+          const scopeKey = matchIdScope ? `match:${matchIdScope}` : `all:${mapId}|${dateValue}`;
+          const timeKey = timeLimited ? `timelimited` : `notimelimited`;
+
+          const viewportScaleSig = viewport.scaleMinimapToScreen.toFixed(6);
+          const cacheKey = `${scopeKey}|${modeKey}|${trafficSig}|${timeKey}|v=${viewportScaleSig}`;
+          const shouldRebuild = (heatmapCacheKey !== cacheKey) || (heatmapLastViewportScale !== viewportScaleSig);
+
+          if (!shouldRebuild) return;
+
+          heatmapCacheKey = cacheKey;
+          heatmapEvents = [];
+          heatmapDrawnCount = 0;
+          heatmapLastTs = null;
+          heatmapLastViewportScale = viewportScaleSig;
+
+          heatmapOffCtx.clearRect(0, 0, MINIMAP_SIZE, MINIMAP_SIZE);
+
+          // Build relevant event list (sorted by ts).
+          for (const e of baseEvents) {
+            if (classifyForHeatmap(e.kind, showHumans.checked, showBots.checked)) {
+              heatmapEvents.push(e);
+            }
+          }
+          heatmapEvents.sort((a, b) => a.ts - b.ts);
+        }
+
+        function ensureHeatmapDrawnUpTo(currentTs, { baseEvents, matchIdScope, timeLimited }) {
+          if (EVENTS[heatmapModeIndex].key === "Off") return;
+
+          rebuildHeatmapIfNeeded({ baseEvents, matchIdScope, timeLimited });
+
+          const targetCount = upperBoundByTs(heatmapEvents, currentTs);
+          if (targetCount <= heatmapDrawnCount) {
+            // If user scrubs backward, rebuild. (Detect via target < drawn)
+            if (targetCount < heatmapDrawnCount) {
+              heatmapOffCtx.clearRect(0, 0, MINIMAP_SIZE, MINIMAP_SIZE);
+              heatmapDrawnCount = 0;
+            } else {
+              return;
+            }
+          }
+
+          const viewportScale = viewport.scaleMinimapToScreen;
+          const radiusMinimap = 30 / viewportScale;
+
+          heatmapOffCtx.save();
+          heatmapOffCtx.globalAlpha = 0.6;
+          for (let i = heatmapDrawnCount; i < targetCount; i++) {
+            const e = heatmapEvents[i];
+            const x = e.px, y = e.py;
+
+            let rgb;
+            const kind = e.kind;
+            if (kind === "kill" || kind === "botKill") {
+              rgb = [255, 59, 59]; // red
+            } else if (kind === "death" || kind === "storm" || kind === "botDeath") {
+              rgb = [255, 155, 47]; // orange (storm included as deaths style)
+            } else if (kind === "humanPos" || kind === "botPos") {
+              rgb = [74, 158, 255]; // blue for traffic
+            } else {
+              continue;
+            }
+
+            const grad = heatmapOffCtx.createRadialGradient(x, y, 0, x, y, radiusMinimap);
+            grad.addColorStop(0, `rgba(${rgb[0]},${rgb[1]},${rgb[2]},1)`);
+            grad.addColorStop(1, `rgba(${rgb[0]},${rgb[1]},${rgb[2]},0)`);
+            heatmapOffCtx.fillStyle = grad;
+            heatmapOffCtx.beginPath();
+            heatmapOffCtx.arc(x, y, radiusMinimap, 0, Math.PI * 2);
+            heatmapOffCtx.fill();
+          }
+          heatmapOffCtx.restore();
+
+          heatmapDrawnCount = targetCount;
+        }
+
+        function drawEventMarkers(events, opts) {
+          const { drawUpToIndex, useTimeLimited } = opts;
+
+          // Markers should draw on top of heatmap.
+          ctx.save();
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+
+          // Positions
+          const dotAlpha = 0.6;
+          const dotRadius = 3; // requirement: 3px radius
+          const humanColor = "#4A9EFF";
+          const botColor = "#888888";
+
+          // Kill markers
+          const killFont = 10; // requirement: 8px marker, using text approx
+          const killSize = 8;
+
+          // Death markers
+          const deathColor = "#ff9b2f";
+          const killColor = "#ff3b3b";
+          const stormColor = "#b56cff";
+          const lootColor = "#ffd54a";
+
+          for (let i = 0; i < events.length; i++) {
+            if (useTimeLimited && i >= drawUpToIndex) break;
+            const e = events[i];
+
+            if (e.kind === "humanPos") {
+              if (!showHumans.checked) continue;
+              ctx.globalAlpha = dotAlpha;
+              ctx.fillStyle = humanColor;
+              const cx = e.px * viewport.scaleX;
+              const cy = e.py * viewport.scaleY;
+              ctx.beginPath();
+              ctx.arc(cx, cy, dotRadius, 0, Math.PI * 2);
+              ctx.fill();
+              continue;
+            }
+
+            if (e.kind === "botPos") {
+              if (!showBots.checked) continue;
+              ctx.globalAlpha = dotAlpha;
+              ctx.fillStyle = botColor;
+              const cx = e.px * viewport.scaleX;
+              const cy = e.py * viewport.scaleY;
+              ctx.beginPath();
+              ctx.arc(cx, cy, dotRadius, 0, Math.PI * 2);
+              ctx.fill();
+              continue;
+            }
+
+            // Kill/Death/Loot markers are always drawn.
+            const cx = e.px * viewport.scaleX;
+            const cy = e.py * viewport.scaleY;
+
+            if (e.kind === "kill") {
+              ctx.globalAlpha = 1;
+              ctx.fillStyle = killColor;
+              ctx.font = `${killSize}px ui-sans-serif, system-ui`;
+              ctx.fillText("✕", cx, cy);
+              continue;
+            }
+
+            if (e.kind === "death") {
+              ctx.globalAlpha = 1;
+              ctx.fillStyle = deathColor;
+              ctx.font = `${killSize}px ui-sans-serif, system-ui`;
+              ctx.fillText("○", cx, cy);
+              continue;
+            }
+
+            if (e.kind === "storm") {
+              ctx.globalAlpha = 1;
+              ctx.fillStyle = stormColor;
+              ctx.font = `${killSize}px ui-sans-serif, system-ui`;
+              ctx.fillText("⚡", cx, cy);
+              continue;
+            }
+
+            if (e.kind === "loot") {
+              ctx.globalAlpha = 1;
+              ctx.fillStyle = lootColor;
+              ctx.font = `${killSize}px ui-sans-serif, system-ui`;
+              ctx.fillText("★", cx, cy);
+              continue;
+            }
+
+            // BotKill / BotKilled: smaller versions in grey tones.
+            if (e.kind === "botKill") {
+              ctx.globalAlpha = 0.95;
+              ctx.fillStyle = "#9a9a9a";
+              ctx.font = `6px ui-sans-serif, system-ui`;
+              ctx.fillText("✕", cx, cy);
+              continue;
+            }
+
+            if (e.kind === "botDeath") {
+              ctx.globalAlpha = 0.95;
+              ctx.fillStyle = "#9a9a9a";
+              ctx.font = `6px ui-sans-serif, system-ui`;
+              ctx.fillText("○", cx, cy);
+              continue;
+            }
+          }
+
+          ctx.restore();
+        }
+
+        function drawHeatmapIfEnabled({ baseEvents, matchIdScope, timeLimited, currentTs }) {
+          if (EVENTS[heatmapModeIndex].key === "Off") return;
+          if (matchIdScope) {
+            // Time-limited incremental mode.
+            ensureHeatmapDrawnUpTo(currentTs, { baseEvents, matchIdScope, timeLimited: true });
+          } else {
+            // Not time-limited: rebuild to full.
+            const modeKey = EVENTS[heatmapModeIndex].key;
+            const viewportScaleSig = viewport.scaleMinimapToScreen.toFixed(6);
+            const cacheKey = `allScopes|${modeKey}|${viewportScaleSig}|hm:full|hum:${showHumans.checked ? 1 : 0}|bots:${showBots.checked ? 1 : 0}`;
+            if (heatmapCacheKey !== cacheKey) {
+              heatmapCacheKey = cacheKey;
+              heatmapEvents = [];
+              heatmapDrawnCount = 0;
+              heatmapOffCtx.clearRect(0, 0, MINIMAP_SIZE, MINIMAP_SIZE);
+              for (const e of baseEvents) {
+                if (classifyForHeatmap(e.kind, showHumans.checked, showBots.checked)) heatmapEvents.push(e);
+              }
+              heatmapEvents.sort((a, b) => a.ts - b.ts);
+            }
+            // Draw everything.
+            heatmapOffCtx.clearRect(0, 0, MINIMAP_SIZE, MINIMAP_SIZE);
+            heatmapDrawnCount = 0;
+            ensureHeatmapDrawnUpTo(Infinity, { baseEvents, matchIdScope: "__notime__", timeLimited: false });
+          }
+
+          // Composite heatmap onto main.
+          ctx.save();
+          ctx.drawImage(heatmapOff, 0, 0, canvas.width, canvas.height);
+          ctx.restore();
+        }
+
+        function render() {
+          if (!eventsByMatch.size) return;
+
+          // VERY FIRST drawing: clear + minimap image.
+          const jsctx = ctx;
+          jsctx.clearRect(0, 0, canvas.width, canvas.height);
+          if (mapImage.complete && mapImage.naturalWidth > 0) {
+            ctx.drawImage(mapImage, 0, 0, canvas.width, canvas.height);
+          } else {
+            ctx.fillStyle = "#1a1a2e";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+          }
+          console.log("mapImage state:", mapImage.src, mapImage.complete, mapImage.naturalWidth);
+
+          const mapId = mapSelect.value;
+          const dateValue = dateSelect.value;
+          const matchId = matchSelect.value === "__all__" ? null : matchSelect.value;
+
+          // Build base events array for this filter scope.
+          // For the selected match, we rely on sorted match events + time limiting.
+          let baseEvents = [];
+          let timeLimited = false;
+
+          if (matchId) {
+            baseEvents = eventsByMatch.get(matchId) || [];
+            timeLimited = true;
+          } else {
+            const cacheKey = `${mapId}|${dateValue}|__all__`;
+            if (!cachedAllMatchesEvents.has(cacheKey)) {
+              const matchIds = matchesByMapDate.get(`${mapId}|${dateValue}`) || [];
+              const merged = [];
+              for (const mid of matchIds) {
+                const arr = eventsByMatch.get(mid);
+                if (arr && arr.length) merged.push(...arr);
+              }
+              cachedAllMatchesEvents.set(cacheKey, merged);
+            }
+            baseEvents = cachedAllMatchesEvents.get(cacheKey) || [];
+            timeLimited = false;
+          }
+
+          // Compute visible window
+          let drawUpToIndex = baseEvents.length;
+          let currentTs = playState.matchId ? playState.currentTs : Infinity;
+          if (timeLimited) {
+            const idx = upperBoundByTs(baseEvents, playState.currentTs);
+            drawUpToIndex = idx;
+            currentTs = playState.currentTs;
+          }
+
+          // Heatmap
+          if (heatmapModeIndex !== 0) {
+            drawHeatmapIfEnabled({
+              baseEvents,
+              matchIdScope: matchId,
+              timeLimited,
+              currentTs
+            });
+          }
+
+          // Markers
+          if (timeLimited) {
+            drawEventMarkers(baseEvents, { drawUpToIndex, useTimeLimited: true });
+          } else {
+            drawEventMarkers(baseEvents, { drawUpToIndex: baseEvents.length, useTimeLimited: false });
+          }
+
+          // Sidebar count
+          let count = 0;
+          if (timeLimited) {
+            for (let i = 0; i < drawUpToIndex; i++) {
+              const e = baseEvents[i];
+              if (e.kind === "humanPos" && !showHumans.checked) continue;
+              if (e.kind === "botPos" && !showBots.checked) continue;
+              count++;
+            }
+          } else {
+            for (const e of baseEvents) {
+              if (e.kind === "humanPos" && !showHumans.checked) continue;
+              if (e.kind === "botPos" && !showBots.checked) continue;
+              count++;
+            }
+          }
+          eventCountEl.textContent = `Showing ${formatNum(count)} events`;
+        }
+
+        function pausePlayback() {
+          playState.isPlaying = false;
+          playBtn.textContent = "Play";
+          needsFullRender = true;
+        }
+
+        function startPlayback() {
+          if (!playState.matchId) return;
+          if (playState.currentTs >= playState.endTs) return;
+          playState.isPlaying = true;
+          playState.playStartReal = performance.now();
+          playState.playStartTs = playState.currentTs;
+          playBtn.textContent = "Pause";
+          needsFullRender = true;
+        }
+
+        function rebuildMatchDropdown() {
+          const mapId = mapSelect.value;
+          const dateValue = dateSelect.value;
+
+          const key = `${mapId}|${dateValue}`;
+          const matchIds = matchesByMapDate.get(key) || [];
+
+          const prev = matchSelect.value;
+
+          matchSelect.innerHTML = "";
+          const allOpt = document.createElement("option");
+          allOpt.value = "__all__";
+          allOpt.textContent = "All matches";
+          matchSelect.appendChild(allOpt);
+
+          for (const mid of matchIds) {
+            const mi = matchInfoById.get(mid);
+            if (!mi) continue;
+            const opt = document.createElement("option");
+            opt.value = mid;
+            opt.textContent = formatMatchLabel(mi);
+            matchSelect.appendChild(opt);
+          }
+
+          if (prev !== "__all__") {
+            // If previous selection is no longer in filtered set, reset.
+            const stillThere = matchIds.includes(prev);
+            if (!stillThere) matchSelect.value = "__all__";
+          } else {
+            matchSelect.value = "__all__";
+          }
+
+          onMatchSelectionChange();
+        }
+
+        function onMatchSelectionChange() {
+          const matchId = matchSelect.value === "__all__" ? null : matchSelect.value;
+          playState.matchId = matchId;
+
+          if (matchId) {
+            const arr = eventsByMatch.get(matchId) || [];
+            if (!arr.length) {
+              timelineBar.style.display = "none";
+              matchMeta.style.display = "block";
+              matchMeta.textContent = "No events in this match.";
+              return;
+            }
+
+            // Match meta
+            const mi = matchInfoById.get(matchId);
+            if (mi) {
+              matchMeta.style.display = "inline-block";
+              matchMeta.textContent = `Players: ${mi.player_count}, Bots: ${mi.bot_count}, Date: ${mi.date}`;
+            } else {
+              matchMeta.style.display = "none";
+            }
+
+            // Timeline
+            const minTs = arr[0].ts;
+            const maxTs = arr[arr.length - 1].ts;
+            playState.startTs = minTs;
+            playState.endTs = maxTs;
+            playState.currentTs = minTs;
+            playState.speed = 1;
+            setSpeedActive(1);
+            pausePlayback();
+
+            playBtn.textContent = "Play";
+            timeSlider.min = String(minTs);
+            timeSlider.max = String(maxTs);
+            // Step: keep slider usable.
+            const span = Math.max(1, maxTs - minTs);
+            const step = span > 2_000_000 ? Math.floor(span / 2000) : Math.max(1, Math.floor(span / 500));
+            timeSlider.step = String(step);
+            timeSlider.value = String(minTs);
+
+            timelineBar.style.display = "block";
+            updateTimeText();
+            needsFullRender = true;
+          } else {
+            matchMeta.style.display = "none";
+            timelineBar.style.display = "none";
+            playState.currentTs = 0;
+            playState.isPlaying = false;
+            playBtn.textContent = "Play";
+            needsFullRender = true;
+          }
+        }
+
+        function updateTimeText() {
+          if (!playState.matchId) {
+            timeText.textContent = "Current: 0";
+            return;
+          }
+          const t = playState.currentTs - playState.startTs;
+          const d = playState.endTs - playState.startTs;
+          timeText.textContent = `Current: ${formatNum(t)} / ${formatNum(d)}`;
+        }
+
+        function updateSpeed(mult) {
+          playState.speed = mult;
+          setSpeedActive(mult);
+          needsFullRender = true;
+        }
+
+        async function preprocessAndBuildIndexes() {
+          showLoading("Loading and indexing events...");
+
+          const [dataRes, matchesRes] = await Promise.all([
+            fetch("./data.json", { cache: "no-store" }),
+            fetch("./matches.json", { cache: "no-store" })
+          ]);
+
+          if (!dataRes.ok) throw new Error(`Failed to fetch data.json: ${dataRes.status}`);
+          if (!matchesRes.ok) throw new Error(`Failed to fetch matches.json: ${matchesRes.status}`);
+
+          const [data, matchesData] = await Promise.all([
+            dataRes.json(),
+            matchesRes.json()
+          ]);
+
+          matches = matchesData;
+          matchInfoById = new Map(matches.map(m => [m.match_id, m]));
+
+          // Build matchesByMapDate lookup.
+          matchesByMapDate = new Map();
+          for (const mi of matches) {
+            const mapId = mi.map_id;
+            const dateValue = mi.date;
+            const key = `${mapId}|${dateValue}`;
+            if (!matchesByMapDate.has(key)) matchesByMapDate.set(key, []);
+            matchesByMapDate.get(key).push(mi.match_id);
+          }
+          // Add "All" date bucket for each map.
+          for (const mapId of Object.keys(MAP_META)) {
+            const allKey = `${mapId}|All`;
+            const merged = [];
+            for (const dateValue of ["February_10", "February_11", "February_12", "February_13", "February_14"]) {
+              const k = `${mapId}|${dateValue}`;
+              const arr = matchesByMapDate.get(k);
+              if (arr && arr.length) merged.push(...arr);
+            }
+            matchesByMapDate.set(allKey, merged);
+          }
+
+          // Init per-match arrays.
+          eventsByMatch = new Map();
+          for (const mi of matches) {
+            eventsByMatch.set(mi.match_id, []);
+          }
+
+          // Convert raw events -> simplified marker events (px/py precomputed).
+          // NOTE: we keep only x/z projections and classification.
+          const simplifiedCount = data.length;
+          let processed = 0;
+
+          for (let i = 0; i < data.length; i++) {
+            const e = data[i];
+            const matchId = e.match_id;
+            if (!eventsByMatch.has(matchId)) continue;
+
+            const mapId = e.map_id;
+            const kind = classifyEvent(e.event);
+            if (!kind) continue;
+
+            const pix = toMinimapPixel(mapId, e.x, e.z);
+            if (!pix) continue;
+
+            eventsByMatch.get(matchId).push({
+              kind,
+              ts: e.ts,
+              px: pix.px,
+              py: pix.py,
+            });
+
+            processed++;
+            if (i % 250000 === 0 && i !== 0) {
+              // Occasionally yield to UI.
+              showLoading(`Indexing events... ${formatNum(i)} / ${formatNum(simplifiedCount)}`);
+              await new Promise(r => setTimeout(r, 0));
+            }
+          }
+
+          // Sort events inside each match by ts.
+          for (const [mid, arr] of eventsByMatch.entries()) {
+            arr.sort((a, b) => a.ts - b.ts);
+            // If match has no relevant events, we can drop it to save time.
+            // But keep keys intact because dropdown relies on matches.json.
+          }
+
+          // Load initial minimap image for selected map.
+          setCurrentMapImage(mapSelect.value);
+
+          showLoading("Preparing renderer...");
+          // Ensure resize layout.
+          resizeCanvasAndViewport();
+
+          // Prime heatmap state.
+          heatmapCacheKey = null;
+          heatmapDrawnCount = 0;
+          heatmapEvents = [];
+
+          needsFullRender = true;
+          hideLoading();
+        }
+
+        function cycleHeatmapMode() {
+          heatmapModeIndex = (heatmapModeIndex + 1) % EVENTS.length;
+          const mode = EVENTS[heatmapModeIndex].key;
+          heatmapToggle.textContent = EVENTS[heatmapModeIndex].label;
+          // Invalidate heatmap cache.
+          heatmapCacheKey = null;
+          heatmapDrawnCount = 0;
+          needsFullRender = true;
+        }
+
+        // Event listeners
+        mapSelect.addEventListener("change", () => {
+          cachedAllMatchesEvents.clear();
+          setCurrentMapImage(mapSelect.value);
+          rebuildMatchDropdown();
+          pausePlayback();
+          needsFullRender = true;
+        });
+
+        dateSelect.addEventListener("change", () => {
+          cachedAllMatchesEvents.clear();
+          rebuildMatchDropdown();
+          pausePlayback();
+          needsFullRender = true;
+        });
+
+        matchSelect.addEventListener("change", () => {
+          // Reset heatmap + playback.
+          heatmapCacheKey = null;
+          heatmapDrawnCount = 0;
+          onMatchSelectionChange();
+          needsFullRender = true;
+        });
+
+        showHumans.addEventListener("change", () => {
+          cachedAllMatchesEvents.clear();
+          heatmapCacheKey = null;
+          heatmapDrawnCount = 0;
+          needsFullRender = true;
+        });
+
+        showBots.addEventListener("change", () => {
+          cachedAllMatchesEvents.clear();
+          heatmapCacheKey = null;
+          heatmapDrawnCount = 0;
+          needsFullRender = true;
+        });
+
+        heatmapToggle.addEventListener("click", () => {
+          cycleHeatmapMode();
+        });
+
+        playBtn.addEventListener("click", () => {
+          if (!playState.matchId) return;
+          if (playState.isPlaying) pausePlayback();
+          else startPlayback();
+        });
+
+        speed1Btn.addEventListener("click", () => updateSpeed(1));
+        speed5Btn.addEventListener("click", () => updateSpeed(5));
+        speed20Btn.addEventListener("click", () => updateSpeed(20));
+
+        let sliderInteracting = false;
+        timeSlider.addEventListener("input", () => {
+          sliderInteracting = true;
+          if (!playState.matchId) return;
+          playState.currentTs = Number(timeSlider.value);
+          playState.isPlaying = false;
+          playBtn.textContent = "Play";
+          updateTimeText();
+          needsFullRender = true;
+        });
+        timeSlider.addEventListener("change", () => {
+          sliderInteracting = false;
+        });
+
+        window.addEventListener("resize", () => {
+          resizeCanvasAndViewport();
+          heatmapCacheKey = null;
+          heatmapDrawnCount = 0;
+          needsFullRender = true;
+        });
+
+        // Render loop
+        function tick(now) {
+          requestAnimationFrame(tick);
+          if (!eventsByMatch.size) return;
+
+          // Throttle render FPS a bit (especially while playing).
+          const minFrameMs = 50; // ~20fps
+          if (!needsFullRender && (now - lastFrameAt) < minFrameMs) return;
+
+          if (playState.matchId && playState.isPlaying) {
+            const realElapsed = now - playState.playStartReal;
+            const nextTs = playState.playStartTs + realElapsed * playState.speed;
+            playState.currentTs = Math.min(playState.endTs, nextTs);
+            timeSlider.value = String(playState.currentTs);
+            updateTimeText();
+            needsFullRender = true;
+
+            if (playState.currentTs >= playState.endTs) {
+              pausePlayback();
+              needsFullRender = true;
+            }
+          }
+
+          if (needsFullRender) {
+            render();
+            needsFullRender = false;
+            lastFrameAt = now;
+          }
+        }
+
+        // Init dropdowns and load data
+        (async function init() {
+          try {
+            // Initial heatmap label.
+            heatmapToggle.textContent = EVENTS[heatmapModeIndex].label;
+
+            // Initial dropdown build is possible only after indexing matches.
+            showLoading("Loading match data...");
+            await preprocessAndBuildIndexes();
+
+            // Populate match dropdown using current sidebar filters.
+            rebuildMatchDropdown();
+            onMatchSelectionChange();
+
+            resizeCanvasAndViewport();
+            updateTimeText();
+            render();
+
+            requestAnimationFrame(tick);
+          } catch (err) {
+            console.error(err);
+            loadingText.textContent = "Failed to load data.json / matches.json.";
+            hideLoading();
+            eventCountEl.textContent = "Error loading data.";
+          }
+        })();
+      })();
+    </script>
+  </body>
+</html>
+
