@@ -48,9 +48,3 @@ Then open http://localhost:3000
 - `ARCHITECTURE.md` — technical decisions and tradeoffs
 - `INSIGHTS.md` — three data insights from the tool
 ```
-
-Save it, then push everything:
-```
-git add README.md ARCHITECTURE.md
-git commit -m "Add README and architecture doc"
-git push
